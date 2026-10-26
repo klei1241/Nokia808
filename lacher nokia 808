@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nokia 808 Symbian Launcher</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Widget de Relógio do Symbian Belle -->
+    <div class="symbian-widget clock-widget">
+        <h1 id="clock">12:00</h1>
+        <p id="date">Seg, 26 de Outubro</p>
+    </div>
+
+    <!-- Grade de Ícones da Tela Inicial -->
+    <div class="homescreen-grid">
+        <!-- Exemplo de atalho com Intent Android -->
+        <a class="app-icon" href="intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MESSAGING;end">
+            <div class="icon-box msg-icon">✉️</div>
+            <span>Mensagens</span>
+        </a>
+
+        <a class="app-icon" href="intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end">
+            <div class="icon-box camera-icon">📷</div>
+            <span>Câmera 41MP</span>
+        </a>
+
+        <a class="app-icon" href="intent:#Intent;action=android.intent.action.VIEW;scheme=https;end">
+            <div class="icon-box web-icon">🌐</div>
+            <span>Web</span>
+        </a>
+
+        <a class="app-icon" href="intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_GALLERY;end">
+            <div class="icon-box gallery-icon">🖼️</div>
+            <span>Galeria</span>
+        </a>
+    </div>
+
+    <!-- Barra Inferior do Symbian Belle -->
+    <div class="symbian-navbar">
+        <a class="nav-btn" href="intent:#Intent;action=android.intent.action.DIAL;end">
+            <span class="nav-icon">📞</span>
+        </a>
+        <button class="nav-btn" onclick="toggleMenu()">
+            <span class="nav-icon">☰</span>
+        </button>
+        <button class="nav-btn" onclick="alert('Opções do Symbian')">
+            <span class="nav-icon">⚙️</span>
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    /* Wallpaper estilo Nokia Belle */
+    background: radial-gradient(circle at top right, #1e3c72, #2a5298, #0f172a);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+/* Widget de Relógio Estilo Belle */
+.clock-widget {
+    margin: 40px 20px 0 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 18px;
+    padding: 15px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.clock-widget h1 {
+    font-size: 3rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+}
+
+.clock-widget p {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+}
+
+/* Grade de Apps da Tela Inicial */
+.homescreen-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: 20px;
+}
+
+.app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+}
+
+/* Formato Squircle Clássico da Nokia */
+.icon-box {
+    width: 58px;
+    height: 58px;
+    background: linear-gradient(145deg, #334155, #1e293b);
+    border-radius: 16px; /* Squircle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-icon span {
+    font-size: 0.75rem;
+    margin-top: 6px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Barra de Navegação Inferior Nokia 808 */
+.symbian-navbar {
+    height: 60px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.4rem;
+    width: 33%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.nav-btn:active {
+    background: rgba(255, 255, 255, 0.1);
