@@ -1,18 +1,284 @@
-// Relógio em Tempo Real
-function updateClock() {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    
-    document.getElementById('clock').innerText = `${hours}:${minutes}`;
-    
-    const options = { weekday: 'short', day: 'numeric', month: 'short' };
-    document.getElementById('date').innerText = now.toLocaleDateString('pt-BR', options);
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Nokia 808 PureView — Belle FP2 v4</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;background:#000;font-family:"Nokia Pure","Segoe UI",Arial,sans-serif;color:#fff;overflow:hidden}
+#phone{position:relative;width:100%;max-width:420px;height:100%;margin:auto;overflow:hidden;
+ background:linear-gradient(180deg,#7fb3e6 0%,#bcd9f2 35%,#9cc56a 55%,#4f8a2a 75%,#1f4a12 100%)}
+#phone:before{content:"";position:absolute;inset:55% 0 0;background:repeating-linear-gradient(100deg,transparent 0 6px,rgba(20,60,10,.35) 6px 8px);pointer-events:none}
+
+.status{position:absolute;top:0;left:0;right:0;height:24px;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:12px;z-index:20;color:#eee}
+.status .r{display:flex;align-items:center;gap:5px}
+.sig{display:inline-flex;align-items:flex-end;gap:1px}
+.sig span{display:inline-block;width:3px;background:#fff}
+.sig span.off{background:#555}
+.bat{display:inline-block;width:20px;height:10px;border:1px solid #ccc;border-radius:2px;position:relative}
+.bat:after{content:"";position:absolute;right:-3px;top:2px;width:2px;height:4px;background:#ccc}
+.bat i{position:absolute;top:1px;left:1px;bottom:1px;width:70%;background:#eee}
+.bat i.low{background:#e33}
+.bat i.chg{background:#4c4}
+
+.screens{position:absolute;top:24px;bottom:46px;left:0;right:0;display:flex;transition:transform .35s}
+.screen{min-width:100%;padding:8px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+
+.w{background:linear-gradient(180deg,rgba(45,45,45,.82),rgba(10,10,10,.82));border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,.22);box-shadow:0 1px 2px rgba(0,0,0,.6)}
+.row{display:flex;gap:8px}.row>.w{flex:1}
+.clock{font-size:42px;font-weight:300}
+.small{font-size:12px;color:#bbb}
+.sc{display:flex;justify-content:space-around}
+
+.ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;
+ background:linear-gradient(180deg,rgba(255,255,255,.45) 0%,rgba(255,255,255,.12) 45%,rgba(0,0,0,.18) 100%),var(--c,#2a7fd4);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 4px rgba(0,0,0,.6);border:1px solid rgba(0,0,0,.35)}
+.ct{display:flex;justify-content:space-around}
+.ct div{width:58px;height:58px;border-radius:6px;display:flex;align-items:flex-end;justify-content:center;font-size:11px;padding-bottom:2px;background-size:cover;border:1px solid rgba(255,255,255,.25)}
+.nt div{padding:5px 2px;border-bottom:1px solid #333;font-size:13px}.nt div:last-child{border:0}
+
+.dots{position:absolute;bottom:50px;width:100%;text-align:center;z-index:5}
+.dots b{display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff5;margin:0 3px}.dots b.on{background:#fff}
+
+.bar{position:absolute;bottom:0;left:0;right:0;height:46px;background:linear-gradient(180deg,#46536e 0%,#232c40 50%,#131a2b 100%);display:flex;align-items:center;justify-content:space-between;padding:0 10px;z-index:20;border-top:1px solid #5a6a8a}
+.bar button{background:none;border:0;color:#fff;font-size:18px;padding:10px 12px;text-shadow:0 1px 2px #000}
+.bar .call{background:linear-gradient(180deg,#7ec850,#3f8f1e);border:1px solid #2a5f10;border-radius:8px;font-size:14px;font-weight:bold;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+
+.panel{position:absolute;inset:24px 0 46px;background:#000;z-index:15;display:none;flex-direction:column}
+.panel.on{display:flex}
+.panel h2{font-size:15px;font-weight:normal;padding:9px 10px;background:#000;border-bottom:1px solid #2a2a2a;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 4px;padding:16px 6px;overflow-y:auto}
+.app{text-align:center;font-size:11px}.app .ic{margin:0 auto 4px}
+
+.opt{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);width:82%;background:#ececec;border-radius:6px;z-index:30;display:none;box-shadow:0 4px 14px rgba(0,0,0,.7);overflow:hidden}
+.opt div{padding:13px 14px;border-bottom:1px solid #c9c9c9;color:#111;font-size:15px}
+.opt div:last-child{border:0}
+.opt div:active{background:#3aa7e0;color:#fff}
+.opt.on{display:block}
+
+.notif{position:absolute;top:0;left:0;right:0;height:0;overflow:hidden;background:rgba(0,0,0,.95);z-index:25;transition:height .3s}
+.notif.on{height:70%}
+.tg{display:flex;justify-content:space-around;padding:34px 6px 10px}
+.tg div{width:64px;text-align:center;font-size:11px;padding:9px 0;border-radius:8px;background:#222;border:1px solid #3a3a3a}
+.tg div.a{background:#1d6fa8;border-color:#3aa7e0}
+#nlist{padding:8px;overflow-y:auto}
+
+.dial input{width:100%;font-size:32px;text-align:center;background:#111;color:#fff;border:0;padding:14px;border-bottom:1px solid #2a2a2a}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px}
+.keys button{font-size:24px;padding:14px;background:linear-gradient(180deg,#5c5c5c,#383838);color:#fff;border:1px solid #222;border-radius:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.keys button:active{background:#3aa7e0}
+
+#lock{position:absolute;inset:0;z-index:50;background:linear-gradient(#000 20%,#0b2a55);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .4s}
+#lock .clock{font-size:70px;font-weight:300}
+.slide{margin-top:60px;width:80%;height:52px;border-radius:26px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);position:relative}
+.knob{position:absolute;left:4px;top:4px;width:44px;height:44px;border-radius:50%;background:linear-gradient(#fff,#cfcfcf);color:#111;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+
+.cam{background:#000}
+.cam video{flex:1;width:100%;object-fit:cover;background:#111;min-height:0}
+.strip{display:flex;gap:6px;padding:6px;overflow-x:auto;background:#0a0a0a;min-height:64px}
+.strip img{height:52px;border-radius:4px;border:1px solid #444}
+.cambot{display:flex;align-items:center;justify-content:space-around;padding:10px;background:#111;border-top:1px solid #333}
+.cambot button{background:#222;color:#fff;border:1px solid #555;border-radius:50%;width:52px;height:52px;font-size:20px}
+#shut{width:66px;height:66px;background:radial-gradient(circle,#fff 38%,#1d6fa8 42%)!important;border:3px solid #fff}
+#cammsg{font-size:11px;color:#fc6;font-weight:normal}
+</style>
+</head>
+<body>
+<div id="phone">
+ <div class="status" onclick="tog('notif')">
+  <span id="pgtitle">Tela inicial</span>
+  <span class="r"><span style="color:#9cf;font-size:11px">abc</span><span id="net">…</span><span class="sig" id="sig"><span style="height:4px"></span><span style="height:6px"></span><span style="height:8px"></span><span style="height:10px"></span><span style="height:12px"></span></span><span class="bat"><i id="batfill"></i></span><span id="tm">00:00</span></span>
+ </div>
+
+ <div class="screens" id="scr">
+  <div class="screen">
+   <div class="w"><div class="row" style="align-items:center"><div class="clock" id="ck">00:00</div><div><div id="dt" class="small"></div><div>⛅ 28°C Fortaleza</div></div></div></div>
+   <div class="row"><div class="w" onclick="cycleProfile()">🔔 <span id="pf">Geral</span></div><div class="w" id="netw">📶 Rede: …</div></div>
+   <div class="w sc">
+    <div class="ic" style="--c:#2a9d3a" onclick="open_('dial')">📞</div>
+    <div class="ic" style="--c:#1e6fd0" onclick="nat('Mensagens')">✉️</div>
+    <div class="ic" style="--c:#e08a00" onclick="nat('Web')">🌐</div>
+    <div class="ic" style="--c:#555" onclick="nat('Câmera')">📷</div>
+   </div>
+   <div class="w ct">
+    <div style="background:#a55" onclick="location.href='tel:'">Ana</div><div style="background:#5a7" onclick="location.href='tel:'">João</div><div style="background:#57a" onclick="location.href='tel:'">Maria</div><div style="background:#a85" onclick="location.href='tel:'">Pedro</div>
+   </div>
+   <div class="w nt" id="wnews">
+    <div>💬 João: Bora sair hoje?</div>
+    <div>📞 1 chamada perdida — Maria</div>
+   </div>
+  </div>
+  <div class="screen">
+   <div class="w"><b>🎵 Música</b><div class="small">Nokia Tune — Nokia</div><div style="font-size:28px;text-align:center">⏮ ▶️ ⏭</div></div>
+   <div class="w"><b>📅 Agenda</b><div class="small">10:00 Reunião<br>15:30 Dentista<br>20:00 Futebol</div></div>
+   <div class="w"><b>💾 Sistema</b><div class="small" id="sysinfo">Bateria: …</div></div>
+  </div>
+  <div class="screen">
+   <div class="w"><b>📰 Notícias</b><div class="small">Nokia 808 PureView: 41 megapixels!</div></div>
+   <div class="w sc">
+    <div class="ic" style="--c:#c33">🎬</div><div class="ic" style="--c:#39c">🗺️</div><div class="ic" style="--c:#963">📁</div><div class="ic" style="--c:#777">⚙️</div>
+   </div>
+  </div>
+ </div>
+ <div class="dots" id="dots"><b class="on"></b><b></b><b></b></div>
+
+ <div class="panel" id="menu"><h2>Menu</h2><div class="grid" id="apps"></div></div>
+ <div class="panel dial" id="dial"><h2>Telefone</h2><input id="num" readonly><div class="keys" id="keys"></div></div>
+
+ <div class="opt" id="opt">
+  <div onclick="askNotify()">Ativar notificações</div>
+  <div onclick="notify('Nokia 808','Teste de notificação ✔')">Testar notificação</div>
+  <div onclick="lock()">Bloquear tela</div>
+  <div onclick="tog('opt')">Cancelar</div>
+ </div>
+
+ <div class="notif" id="notif" onclick="if(event.target===this)tog('notif')">
+  <div class="tg">
+   <div class="a" onclick="this.classList.toggle('a')">📶<br>Wi-Fi</div>
+   <div onclick="this.classList.toggle('a')">ᛒ<br>Bluetooth</div>
+   <div class="a" onclick="this.classList.toggle('a')">⇅<br>Dados</div>
+   <div onclick="this.classList.toggle('a');vibrate(40)">🔕<br>Silencioso</div>
+  </div>
+  <div class="nt" id="nlist"><div>Nenhuma notificação</div></div>
+ </div>
+
+ <div class="panel cam" id="cam"><h2>Câmera 41MP <span id="cammsg"></span></h2>
+  <video id="vid" autoplay playsinline muted></video>
+  <canvas id="shot" hidden></canvas>
+  <div class="strip" id="strip"></div>
+  <div class="cambot">
+   <button onclick="cam_flip()" title="Virar câmera">🔄</button>
+   <button id="shut" onclick="cam_shot()" title="Tirar foto">●</button>
+   <button onclick="cam_close()" title="Fechar">✕</button>
+  </div>
+ </div>
+
+ <div class="bar">
+  <button onclick="open_('menu')" title="Menu">▦</button>
+  <button onclick="tog('opt')" title="Opções">☰</button>
+  <button class="call" onclick="open_('dial')">📞 Chamar</button>
+ </div>
+
+ <div id="lock">
+  <div class="clock" id="lk">00:00</div><div id="ld" class="small"></div>
+  <div class="slide" id="sl"><div class="knob" id="kn">🔒</div></div>
+  <div class="small" style="margin-top:10px">Deslize para desbloquear</div>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms)}
+
+const apps=[["📞", "Telefone", "#2a9d3a", "intent:#Intent;action=android.intent.action.DIAL;end"], ["✉️", "Mensagens", "#1e6fd0", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MESSAGING;end"], ["👥", "Contatos", "#3a8ac0", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CONTACTS;end"], ["📷", "Câmera", "#555", "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end"], ["🖼️", "Galeria", "#c06", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_GALLERY;end"], ["🎵", "Música", "#e60", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MUSIC;end"], ["🗺️", "Mapas", "#2a9", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MAPS;end"], ["🌐", "Web", "#e08a00", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_BROWSER;end"], ["⏰", "Relógio", "#444", "intent:#Intent;action=android.intent.action.SHOW_ALARMS;end"], ["📅", "Agenda", "#c33", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALENDAR;end"], ["📁", "Arquivos", "#963", "intent:#Intent;action=android.intent.action.MAIN;package=com.google.android.documentsui;end"], ["⚙️", "Config.", "#777", "intent:#Intent;action=android.settings.SETTINGS;end"], ["🎬", "Vídeos", "#a33", "intent:#Intent;action=android.media.action.VIDEO_CAMERA;end"], ["📻", "Rádio", "#36a", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MUSIC;end"], ["🧮", "Calculad.", "#5a5", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALCULATOR;end"], ["🛒", "Loja", "#29c", "market://search?q=apps"], ["✉️", "E-mail", "#26a", "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_EMAIL;end"], ["📶", "Wi-Fi", "#468", "intent:#Intent;action=android.settings.WIFI_SETTINGS;end"]];
+$('apps').innerHTML=apps.map(a=>`<div class="app" onclick="appOpen('${a[1]}','${a[3]}')"><div class="ic" style="--c:${a[2]}">${a[0]}</div>${a[1]}</div>`).join('');
+function appOpen(name,act){vibrate(30);
+ toast('Abrindo '+name+'…');
+ location.href=act;
+ setTimeout(()=>{if(!document.hidden)toast(name+': abra pelo Chrome ou APK com intents liberados')},1500)}
+function nat(n){const a=apps.find(x=>x[1]===n);appOpen(n,a[3])}
+$('keys').innerHTML=[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(k=>`<button onclick="vibrate(25);$('num').value+='${k}'">${k}</button>`).join('')+`<button style="grid-column:span 2;background:linear-gradient(#4c4,#181)" onclick="callNumber()">📞</button><button onclick="$('num').value=$('num').value.slice(0,-1)">⌫</button>`;
+function callNumber(){const n=$('num').value;vibrate(40);
+ if(!n){toast('Digite um número');return}
+ location.href='tel:'+n}
+
+function tick(){const d=new Date(),t=d.toTimeString().slice(0,5),s=d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+ ['tm','ck','lk'].forEach(i=>$(i).textContent=t);$('dt').textContent=s;$('ld').textContent=s}
+tick();setInterval(tick,1000);
+
+function tog(id){$(id).classList.toggle('on')}
+function open_(id){const p=$(id),on=p.classList.contains('on');document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));if(id!=='cam'&&stream)cam_close();if(!on)p.classList.add('on');$('pgtitle').textContent=p.classList.contains('on')?p.querySelector('h2').textContent.replace(/Câmera.*/,'Câmera'):'Tela inicial'}
+const profiles=['Geral','Silencioso','Reunião','Ao ar livre'];let pi=0;
+function cycleProfile(){pi=(pi+1)%4;$('pf').textContent=profiles[pi];vibrate(30)}
+function toast(m){const t=document.createElement('div');t.textContent=m;const b=$('cam').classList.contains('on')?170:70;t.style.cssText='position:absolute;bottom:'+b+'px;left:50%;transform:translateX(-50%);background:#ececec;color:#111;border-radius:6px;padding:8px 14px;z-index:60;box-shadow:0 3px 10px rgba(0,0,0,.6)';$('phone').appendChild(t);setTimeout(()=>t.remove(),1500);$('opt').classList.remove('on')}
+
+// ---- Rede de verdade: mostra 5G / 4G / 3G / 2G / Wi-Fi / Offline ----
+function netUpdate(){
+ const n=$('net'),c=navigator.connection,bars=$('sig').children;
+ if(!navigator.onLine){n.textContent='Sem rede';$('netw').textContent='📶 Rede: offline';[...bars].forEach(b=>b.classList.add('off'));return}
+ let type='4G',level=4,desc='4G';
+ if(c){
+  const et=c.effectiveType;
+  if(et==='slow-2g'||et==='2g'){type='2G';level=1;desc='2G (lento)'}
+  else if(et==='3g'){type='3G';level=2;desc='3G'}
+  else{type='4G';level=(c.downlink>=10?4:3);desc=c.downlink?('4G · '+c.downlink.toFixed(0)+' Mb/s'):'4G'}
+  if(c.type==='wifi'){type='Wi-Fi';level=4;desc='Wi-Fi'}
+  if(c.saveData)desc+=' · econ.'
+ }
+ n.textContent=type;$('netw').textContent='📶 Rede: '+desc;
+ [...bars].forEach((b,i)=>b.classList.toggle('off',i>=level));
+}
+netUpdate();
+if(navigator.connection)navigator.connection.addEventListener('change',()=>{netUpdate();pushNotif('📶 Rede mudou: '+$('net').textContent)});
+window.addEventListener('online',()=>{netUpdate();pushNotif('📶 Conectado de novo')});
+window.addEventListener('offline',()=>{netUpdate();pushNotif('⚠️ Sem conexão')});
+
+// ---- Bateria de verdade ----
+if(navigator.getBattery)navigator.getBattery().then(b=>{
+ function bat(){const p=Math.round(b.level*100),f=$('batfill');
+  f.style.width=(p*0.82)+'%';f.className=b.charging?'chg':(p<=20?'low':'');
+  $('sysinfo').textContent='Bateria: '+p+'%'+(b.charging?' (carregando ⚡)':'')+' · Rede: '+$('net').textContent}
+ bat();b.onlevelchange=bat;b.onchargingchange=()=>{bat();pushNotif(b.charging?'⚡ Carregador conectado':'🔌 Carregador removido')}});
+else $('sysinfo').textContent='Bateria: n/d';
+
+// ---- Notificações de verdade (sistema) + lista no painel ----
+function pushNotif(txt){
+ const l=$('nlist');if(l.firstElementChild&&l.firstElementChild.textContent==='Nenhuma notificação')l.innerHTML='';
+ const d=document.createElement('div');d.textContent=txt;l.prepend(d);
+ const w=$('wnews');const d2=document.createElement('div');d2.textContent=txt;w.prepend(d2);
+ while(l.children.length>8)l.lastChild.remove();while(w.children.length>4)w.lastChild.remove();
+}
+function notify(title,body){
+ pushNotif(title+' — '+body);vibrate(60);
+ if('Notification' in window&&Notification.permission==='granted'){
+  try{new Notification(title,{body:body,icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📱</text></svg>'})}catch(e){}
+ }else toast(title+': '+body);
+}
+function askNotify(){
+ if(!('Notification' in window)){toast('Sem suporte a notificações');return}
+ Notification.requestPermission().then(p=>{
+  toast(p==='granted'?'Notificações ativadas ✔':'Permissão negada');
+  if(p==='granted')notify('Nokia 808','Notificações ativadas!')});
 }
 
-setInterval(updateClock, 1000);
-updateClock();
+// deslizar telas
+let cur=0,sx=0;const scr=$('scr');
+scr.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
+scr.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)<50)return;cur=Math.max(0,Math.min(2,cur+(dx<0?1:-1)));scr.style.transform=`translateX(-${cur*100}%)`;[...$('dots').children].forEach((b,i)=>b.classList.toggle('on',i===cur))});
 
-function toggleMenu() {
-    alert("Gaveta de Apps do Symbian Belle (em desenvolvimento)");
+// tela de bloqueio
+const kn=$('kn'),sl=$('sl');let drag=false,kx=0;
+kn.addEventListener('touchstart',e=>{drag=true;kx=e.touches[0].clientX});
+kn.addEventListener('mousedown',e=>{drag=true;kx=e.clientX});
+function mv(x){if(!drag)return;const m=sl.clientWidth-52;kn.style.left=Math.max(4,Math.min(m,4+x-kx))+'px'}
+function up(){if(!drag)return;drag=false;vibrate(20);if(parseInt(kn.style.left)>sl.clientWidth-70){$('lock').style.transform='translateY(-100%)'}kn.style.left='4px'}
+document.addEventListener('touchmove',e=>mv(e.touches[0].clientX));document.addEventListener('mousemove',e=>mv(e.clientX));
+document.addEventListener('touchend',up);document.addEventListener('mouseup',up);
+function lock(){$('opt').classList.remove('on');$('lock').style.transform='none';if(stream)cam_close()}
+
+// câmera de verdade
+let stream=null,vdev='environment',shots=[];
+async function cam_open(){
+ document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+ $('cam').classList.add('on');$('pgtitle').textContent='Câmera';vibrate(30);
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('cammsg').textContent='· sem câmera';return}
+ try{
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:vdev},audio:false});
+  $('vid').srcObject=stream;$('cammsg').textContent='';
+  }catch(e){$('vid').srcObject=null;$('cammsg').textContent=e&&e.name==='NotAllowedError'?'· permissão negada':'· câmera indisponível'}
 }
+function cam_close(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('vid').srcObject=null;$('cam').classList.remove('on');$('pgtitle').textContent='Tela inicial'}
+function cam_flip(){vdev=vdev==='environment'?'user':'environment';cam_open()}
+function cam_shot(){
+ const v=$('vid'),c=$('shot');vibrate(50);
+ if(!stream||!v.videoWidth){toast('Câmera ainda não ligou');return}
+ c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
+ shots.unshift(c.toDataURL('image/jpeg',.9));
+ $('strip').innerHTML=shots.slice(0,12).map((u,i)=>`<a href="${u}" download="nokia-${i+1}.jpg"><img src="${u}"></a>`).join('');
+ notify('Câmera','Foto salva ✔');
+}
+</script>
+</body>
+</html>
